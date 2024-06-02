@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Details</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><%= customer.firstName %> <%= customer.lastName %></h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+      <div class="btn-group me-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary">Share</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="printButton">Print</button>
+      </div>
+    </div>
+  </div>
+  <div class="col py-3">
+    <div class="row">
+      <div class="col">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+            <li class="breadcrumb-item active"><%= customer.firstName %></li>
+          </ol>
+        </nav>
+      </div>
+      <div class="col text-end fw-lighter">
+        <b>Last Updated: <%= new Date().toLocaleString() %></b>
+        <b>UserId:</b> <%= customer.id %>
+      </div>
+    </div>
+  </div>
+  <ul class="list-group">
+    <li class="list-group-item">
+      <div class="row">
+        <div class="col" style="max-width: 140px"> <b>Name:</b></div>
+        <div class="col"><%= customer.firstName %> <%= customer.lastName %></div>
+      </div>
+    </li>
+    <li class="list-group-item">
+      <div class="row">
+        <div class="col" style="max-width: 140px"> <b>Tel:</b></div>
+        <div class="col"><%= customer.tel %></div>
+      </div>
+    </li>
+    <li class="list-group-item">
+      <div class="row">
+        <div class="col" style="max-width: 140px"> <b>Email:</b></div>
+        <div class="col"><%= customer.email %></div>
+      </div>
+    </li>
+    <li class="list-group-item">
+      <div class="row">
+        <div class="col" style="max-width: 140px"> <b>Vehicle Number:</b></div>
+        <div class="col"><%= customer.vehicleNumber %></div>
+      </div>
+    </li>
+    <li class="list-group-item">
+      <div class="row">
+        <div class="col" style="max-width: 140px"> <b>Vehicle Type:</b></div>
+        <div class="col"><%= customer.vehicleType %></div>
+      </div>
+    </li>
+    <li class="list-group-item">
+      <div class="row">
+        <div class="col" style="max-width: 140px"> <b>Vehicle Model:</b></div>
+        <div class="col"><%= customer.vehicleModel %></div>
+      </div>
+    </li>
+    <li class="list-group-item">
+      <div class="row">
+        <div class="col" style="max-width: 140px"> <b>Details:</b></div>
+        <div class="col"><%= customer.details %></div>
+      </div>
+    </li>
+  </ul>
+
+  <div class="row mt-4">
+    <div class="col">
+      <form id="billForm">
+        <div class="form-group mb-3">
+          <label for="serviceType">Service Type</label>
+          <select class="form-select" id="serviceType" name="serviceType">
+            <option value="fullBodyWash">Full Body Wash</option>
+            <option value="bodyWash">Body Wash</option>
+            <option value="underWash">Under Wash</option>
+            <option value="insideClean">Inside Clean</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group mb-3">
+          <label for="servicePrice">Service Price</label>
+          <input type="number" class="form-control" id="servicePrice" name="servicePrice">
+        </div>
+        <div class="form-group mb-3" id="otherDetails" style="display: none;">
+          <label for="otherDetailsTextarea">Additional Details</label>
+          <textarea class="form-control" id="otherDetailsTextarea" name="otherDetails" rows="3"></textarea>
+        </div>
+        <button type="button" class="btn btn-secondary mb-3" id="addServiceBtn">Add Service</button>
+        <table class="table" id="billTable">
+          <thead>
+            <tr>
+              <th scope="col">Service Description</th>
+              <th scope="col">Price</th>
+            </tr>
+          </thead>
+          <tbody id="billStatement">
+          </tbody>
+        </table>
+        <div class="form-group mb-3">
+          <label for="totalPrice">Total Price</label>
+          <input type="text" class="form-control" id="totalPrice" readonly>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<form id="printForm" action="/billstatement" method="POST" target="_blank">
+  <input type="hidden" id="serviceDescriptionsInput" name="serviceDescriptions">
+</form>
+
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const addServiceBtn = document.getElementById("addServiceBtn");
+    const billStatement = document.getElementById("billStatement");
+    const totalPriceInput = document.getElementById("totalPrice");
+    const serviceTypeSelect = document.getElementById("serviceType");
+    const otherDetailsDiv = document.getElementById("otherDetails");
+    const otherDetailsTextarea = document.getElementById("otherDetailsTextarea");
+    const customerId = "<%= customer._id %>"; // Assuming you have access to the customer ID here
+
+    let serviceCount = 0;
+    let total = 0;
+    const serviceDescriptions = [];
+
+    serviceTypeSelect.addEventListener("change", function () {
+      if (serviceTypeSelect.value === "other") {
+        otherDetailsDiv.style.display = "block";
+      } else {
+        otherDetailsDiv.style.display = "none";
+      }
+    });
+
+    addServiceBtn.addEventListener("click", function () {
+      const serviceType = serviceTypeSelect.value;
+      const servicePrice = parseFloat(document.getElementById("servicePrice").value);
+      const otherDetails = otherDetailsTextarea.value;
+
+      if (isNaN(servicePrice) || servicePrice <= 0) {
+        alert("Please enter a valid service price.");
+        return;
+      }
+
+      if (serviceType === "other" && !otherDetails.trim()) {
+        alert("Please provide additional details for the 'Other' service.");
+        return;
+      }
+
+      serviceCount++;
+      total += servicePrice;
+
+      let serviceDescription = `Service ${serviceCount}: ${serviceType}`;
+      if (serviceType === "other") {
+        serviceDescription += ` (Details: ${otherDetails})`;
+      }
+
+      const timestamp = new Date().toLocaleString();
+      serviceDescription += ` - ${timestamp}`;
+
+      serviceDescriptions.push({ description: serviceDescription, price: servicePrice });
+
+      const newRow = billStatement.insertRow();
+      const cell1 = newRow.insertCell(0);
+      const cell2 = newRow.insertCell(1);
+      cell1.textContent = serviceDescription;
+      cell2.textContent = `$${servicePrice.toFixed(2)}`;
+
+      totalPriceInput.value = total.toFixed(2);
+
+      document.getElementById("servicePrice").value = "";
+      otherDetailsTextarea.value = "";
+
+      if (serviceType !== "other") {
+        otherDetailsDiv.style.display = "none";
+      }
+
+      // Save the service description to the database
+      fetch(`/customer/${customerId}/serviceDescriptionHistory`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          serviceDescription: serviceDescription,
+          servicePrice: servicePrice
+        })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to add service description');
+        }
+        return response.json();
+      }).catch(error => {
+        console.error(error);
+        alert('Failed to add service description');
+      });
+    });
+
+    // Load service description history from the database
+    fetch(`/customer/${customerId}/serviceDescriptionHistory`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch service description history');
+        }
+        return response.json();
+      })
+      .then(data => {
+        data.forEach(item => {
+          const newRow = billStatement.insertRow();
+          const cell1 = newRow.insertCell(0);
+          const cell2 = newRow.insertCell(1);
+          cell1.textContent = item.serviceDescription;
+          cell2.textContent = `$${item.servicePrice.toFixed(2)}`;
+          total += item.servicePrice;
+          totalPriceInput.value = total.toFixed(2);
+        });
+      })
+      .catch(error => {
+        console.error(error);
+        alert('Failed to fetch service description history');
+      });
+
+    document.getElementById("printButton").addEventListener("click", function () {
+      const serviceDescriptionsInput = document.getElementById("serviceDescriptionsInput");
+      serviceDescriptionsInput.value = JSON.stringify(serviceDescriptions);
+
+      document.getElementById("printForm").submit();
+    });
+  });
+</script>
+</body>
+</html>
